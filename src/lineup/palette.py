@@ -14,6 +14,17 @@ PALETTE: dict[str, PaletteRGB] = {
     "Orange": (255, 140, 0),
     "Teal": (0, 150, 150),
     "Gray": (150, 150, 150),
+    "Purple": (120, 60, 200),
+    "Pink": (255, 105, 180),
+    "Lime": (140, 220, 60),
+    "Navy": (20, 40, 120),
+    "Sky": (90, 170, 255),
+    "Olive": (120, 130, 40),
+    "Maroon": (140, 20, 20),
+    "Brown": (140, 90, 50),
+    "Gold": (220, 170, 20),
+    "Indigo": (75, 0, 130),
+    "Slate": (110, 120, 140),
 }
 
 def darken(rgb: PaletteRGB, factor: float = 0.75) -> PaletteRGB:
