@@ -1,4 +1,5 @@
 import io
+import sys
 from pathlib import Path
 
 import streamlit as st
@@ -49,14 +50,31 @@ st.image(img, caption=f"{screen.screen_name} ({img.width}x{img.height})", use_co
 
 st.subheader("Export")
 
+def _get_default_output_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        exe_path = Path(sys.executable).resolve()
+        if sys.platform == "darwin" and "Contents" in exe_path.parts:
+            # Move outside the .app bundle.
+            try:
+                app_bundle = exe_path.parents[2]
+                return app_bundle.parent / "outputs"
+            except IndexError:
+                pass
+        return exe_path.parent / "outputs"
+    return Path.cwd() / "outputs"
+
+default_out_dir = _get_default_output_dir()
 out_name = st.text_input("Output filename", value=f"{screen.screen_name}.png")
-out_dir = st.text_input("Output folder", value="outputs")
-Path(out_dir).mkdir(parents=True, exist_ok=True)
+out_dir = st.text_input("Output folder", value=str(default_out_dir))
+out_path_dir = Path(out_dir)
+if not out_path_dir.is_absolute():
+    out_path_dir = default_out_dir.parent / out_path_dir
+out_path_dir.mkdir(parents=True, exist_ok=True)
 
 btn_col1, btn_col2, _btn_spacer = st.columns([1, 1, 8])
 
 if btn_col1.button("Export PNG"):
-    out_path = Path(out_dir) / out_name
+    out_path = out_path_dir / out_name
     img.save(out_path, format="PNG")
     st.success(f"Saved: {out_path.resolve()}")
 
@@ -74,7 +92,7 @@ if btn_col2.button("Export ALL PNGs"):
     progress = st.progress(0)
     total = len(screens)
     for idx, scr in enumerate(screens, start=1):
-        out_path = Path(out_dir) / f"{scr.screen_name}.png"
+        out_path = out_path_dir / f"{scr.screen_name}.png"
         render_lineup_png(scr, tiles, opts).save(out_path, format="PNG")
         progress.progress(idx / total)
-    st.success(f"Saved {total} files to: {Path(out_dir).resolve()}")
+    st.success(f"Saved {total} files to: {out_path_dir.resolve()}")
