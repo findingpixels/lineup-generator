@@ -1,0 +1,5 @@
+tile_type_id,w_px,h_px,w_m,h_m
+CB3_Full,160,320,0.6,1.2
+CB3_Half,160,160,0.6,0.6
+CB5_Full,104,208,0.6,1.2
+CB5_Half,104,104,0.6,0.6
