@@ -118,6 +118,7 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
             max_label_w,
             max_size=int(tile.w_px),
         )
+        label_size = max(10, int(label_size * 0.8))
         label_font = _load_font(opts.font_name, label_size)
         num_font = label_font
 

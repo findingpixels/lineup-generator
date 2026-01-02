@@ -6,6 +6,11 @@ import streamlit as st
 from PIL import Image
 
 from src.lineup.io_csv import load_screens_csv, load_tiles_csv
+from src.lineup.io_google import (
+    fetch_google_sheet_csv,
+    fetch_google_sheet_names,
+    load_screens_from_google_csv,
+)
 from src.lineup.renderer import RenderOptions, render_lineup_png
 from src.lineup.models import validate_screen_against_tiles
 
@@ -14,22 +19,54 @@ st.set_page_config(page_title="Lineup Guide Generator", layout="wide")
 st.title("Lineup Guide Generator")
 
 st.markdown(
-    "Load **tiles.csv** and **screens.csv**, select a screen, preview it, then export a PNG."
+    "Load a **screen notes CSV** (or connect a Google Sheet), select a screen, preview it, then export a PNG."
 )
 
-col1, col2 = st.columns(2)
+data_source = st.radio("Data source", ["Upload CSV", "Google Sheets"], horizontal=True)
 
-with col1:
-    tiles_file = st.file_uploader("tiles.csv", type=["csv"], key="tiles")
-with col2:
-    screens_file = st.file_uploader("screens.csv", type=["csv"], key="screens")
+tiles = None
+screens = None
 
-if not tiles_file or not screens_file:
-    st.info("Upload both CSV files to begin. Sample files are in the `data/` folder.")
-    st.stop()
+if data_source == "Upload CSV":
+    sheet_file = st.file_uploader("Screen notes CSV", type=["csv"], key="screen_notes")
 
-tiles = load_tiles_csv(tiles_file.getvalue().decode("utf-8"))
-screens = load_screens_csv(screens_file.getvalue().decode("utf-8"))
+    if not sheet_file:
+        st.info("Upload the screen notes CSV to begin.")
+        st.stop()
+
+    sheet_text = sheet_file.getvalue().decode("utf-8")
+    try:
+        tiles, screens = load_screens_from_google_csv(sheet_text)
+    except ValueError as exc:
+        st.error(str(exc))
+        st.stop()
+else:
+    st.caption("Sheets must be shared as 'Anyone with the link' or public.")
+    sheet_url = st.text_input("Google Sheet URL")
+    sheet_name = None
+
+    @st.cache_data(show_spinner=False)
+    def _get_sheet_names(url: str) -> list[str]:
+        return fetch_google_sheet_names(url)
+
+    if not sheet_url:
+        st.info("Paste the Google Sheet URL to begin.")
+        st.stop()
+
+    sheet_name = st.text_input(
+        "To use a different sheet besides the first sheet, enter the sheet name here.",
+        value="",
+    ).strip() or None
+
+    try:
+        sheet_text = fetch_google_sheet_csv(sheet_url, sheet_name=sheet_name)
+        tiles, screens = load_screens_from_google_csv(sheet_text)
+    except ValueError as exc:
+        st.error(str(exc))
+        st.stop()
+    except OSError as exc:
+        st.error(f"Failed to load Google Sheet: {exc}")
+        st.stop()
 
 screen_names = [s.screen_name for s in screens]
 selected = st.selectbox("Select a screen", screen_names)
