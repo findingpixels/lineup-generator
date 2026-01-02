@@ -42,8 +42,11 @@ if warnings:
 
 st.subheader("Preview")
 
+# Overlay toggle (defaults on)
+show_overlay = st.toggle("Overlay (screen name + resolution)", value=True)
+
 # Render preview in-memory
-opts = RenderOptions()
+opts = RenderOptions(show_overlay=show_overlay)
 img = render_lineup_png(screen, tiles, opts)
 
 st.image(img, caption=f"{screen.screen_name} ({img.width}x{img.height})", use_container_width=True)

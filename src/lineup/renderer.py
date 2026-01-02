@@ -26,6 +26,9 @@ class RenderOptions:
     # Prefer system font; fallback to default
     font_name: str = "arial.ttf"
 
+    # Overlay options
+    show_overlay: bool = True
+
 def _load_font(font_name: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     candidates = (
         font_name,
@@ -148,22 +151,23 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
             x += tile.w_px
         y += tile.h_px
 
-    # Center overlay (draw last, always)
-    title = screen.screen_name
-    subtitle = f"{total_w}x{total_h}"
+    if opts.show_overlay:
+        # Center overlay (draw last)
+        title = screen.screen_name
+        subtitle = f"{total_w}x{total_h}"
 
-    overlay_title_font = _load_font(opts.font_name, max(20, int(min(total_w, total_h) * opts.overlay_title_frac)))
-    overlay_sub_font = _load_font(opts.font_name, max(16, int(min(total_w, total_h) * opts.overlay_sub_frac)))
+        overlay_title_font = _load_font(opts.font_name, max(20, int(min(total_w, total_h) * opts.overlay_title_frac)))
+        overlay_sub_font = _load_font(opts.font_name, max(16, int(min(total_w, total_h) * opts.overlay_sub_frac)))
 
-    _draw_centered_multiline(
-        draw,
-        (total_w / 2, total_h / 2),
-        [title, subtitle],
-        [overlay_title_font, overlay_sub_font],
-        fill=opts.overlay_text_rgb,
-        stroke_fill=opts.outline_rgb,
-        stroke_width=stroke,
-        line_spacing=0.25,
-    )
+        _draw_centered_multiline(
+            draw,
+            (total_w / 2, total_h / 2),
+            [title, subtitle],
+            [overlay_title_font, overlay_sub_font],
+            fill=opts.overlay_text_rgb,
+            stroke_fill=opts.outline_rgb,
+            stroke_width=stroke,
+            line_spacing=0.25,
+        )
 
     return img
