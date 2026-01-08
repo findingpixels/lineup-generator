@@ -10,17 +10,17 @@ from urllib.request import urlopen
 
 from .models import ScreenSpec, TileType
 
-COL_SCREEN_NAME = 2   # C
-COL_TILE_LABEL = 3    # D
-COL_EXPECTED_W = 4    # E
-COL_EXPECTED_H = 5    # F
-COL_COLS = 12         # M
-COL_ROWS = 13         # N
-COL_SECONDARY_PLACEMENT = 16  # Q (shifted +1 after O)
-COL_TILE_W = 17       # R (shifted +1 after O)
-COL_TILE_H = 18       # S (shifted +1 after O)
-COL_LED_FLAG = 31     # AF (shifted +1 after O)
-COL_BASE_COLOR = 38   # AM (shifted +1 after O)
+COL_SCREEN_NAME = 2   # C (PROD LABEL)
+COL_TILE_LABEL = 3    # D (DELIVERY LABEL)
+COL_BASE_COLOR = 4    # E (Lineup Color)
+COL_EXPECTED_W = 5    # F (PIXELS W)
+COL_EXPECTED_H = 6    # G (PIXELS H)
+COL_COLS = 13         # N (TILE LAYOUT W)
+COL_ROWS = 14         # O (TILE LAYOUT H)
+COL_SECONDARY_PLACEMENT = 16  # Q (half/alt tile position)
+COL_TILE_W = 36       # AK (Single Tile Pixel Width)
+COL_TILE_H = 37       # AL (Single Tile Pixel Height)
+COL_LED_FLAG = 1      # B (SCREEN COUNT)
 
 
 def _extract_sheet_id(sheet_url: str) -> str:
@@ -140,7 +140,7 @@ def load_screens_from_google_csv(text: str) -> tuple[dict[str, TileType], list[S
     screens: list[ScreenSpec] = []
 
     for row_num, row in enumerate(reader, start=1):
-        if not _get_cell(row, COL_LED_FLAG):
+        if not _get_cell(row, COL_TILE_LABEL):
             continue
 
         cols_raw = _get_cell(row, COL_COLS)
