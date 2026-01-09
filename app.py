@@ -12,14 +12,16 @@ from src.lineup.io_google import (
     load_screens_from_google_csv,
 )
 from src.lineup.renderer import RenderOptions, render_lineup_png
-from src.lineup.models import validate_screen_against_tiles
+from src.lineup.models import ScreenSpec, TileType, validate_screen_against_tiles
+from src.lineup.palette import PALETTE
 
 st.set_page_config(page_title="Lineup Guide Generator", layout="wide")
 
 st.title("Lineup Guide Generator")
 
 st.markdown(
-    "Load a **screen notes CSV** (or connect a Google Sheet), select a screen, preview it, then export a PNG."
+    "Load a **screen notes CSV**, connect a Google Sheet, or enter details manually. "
+    "Then select a screen, preview it, and export a PNG."
 )
 st.markdown(
     """
@@ -32,7 +34,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-data_source = st.radio("Data source", ["Google Sheets", "Upload CSV"], horizontal=True)
+data_source = st.radio("Data source", ["Google Sheets", "Upload CSV", "Manual Entry"], horizontal=True)
 
 tiles = None
 screens = None
@@ -50,7 +52,7 @@ if data_source == "Upload CSV":
     except ValueError as exc:
         st.error(str(exc))
         st.stop()
-else:
+elif data_source == "Google Sheets":
     st.caption("Sheets must be shared as 'Anyone with the link' or public.")
     url_col, refresh_col = st.columns([6, 1], vertical_alignment="bottom")
     with url_col:
@@ -85,6 +87,84 @@ else:
     except OSError as exc:
         st.error(f"Failed to load Google Sheet: {exc}")
         st.stop()
+else:
+    st.subheader("Manual Entry")
+    st.caption("Enter screen details directly (no sheet or CSV required).")
+
+    st.markdown("### Screen")
+    screen_col1, screen_col2 = st.columns(2)
+    with screen_col1:
+        screen_name = st.text_input("Screen name", value="SCREEN").strip() or "SCREEN"
+        tile_label = st.text_input("Delivery label", value=screen_name).strip() or screen_name
+        palette_names = list(PALETTE.keys())
+        base_color_name = st.selectbox(
+            "Lineup Color",
+            options=palette_names,
+            index=palette_names.index("Blue") if "Blue" in palette_names else 0,
+            help="Pick a palette color.",
+        )
+
+    with screen_col2:
+        expected_w_px = st.number_input("Pixels width", min_value=0, value=0, step=1)
+        expected_h_px = st.number_input("Pixels height", min_value=0, value=0, step=1)
+
+    st.markdown("### LED")
+    led_col1, led_col2 = st.columns(2)
+    with led_col1:
+        cols = st.number_input("Tile columns", min_value=0.0, value=0.0, step=0.5, format="%.1f")
+        rows = st.number_input("Tile rows", min_value=0.0, value=0.0, step=0.5, format="%.1f")
+    with led_col2:
+        tile_w_px = st.number_input("Tile width pixels", min_value=0, value=0, step=1)
+        tile_h_px = st.number_input("Tile height pixels", min_value=0, value=0, step=1)
+
+    tiles = {}
+    rows_float = float(rows)
+    cols_float = float(cols)
+    full_rows = int(rows_float)
+    has_half_row = abs(rows_float - (full_rows + 0.5)) < 1e-6
+    total_rows = full_rows + 1 if has_half_row else full_rows
+    cols_int = int(round(cols_float))
+    if cols_float > 0 and abs(cols_float - cols_int) > 1e-6:
+        st.warning("Tile columns must be a whole number. Rounding to the nearest column count.")
+
+    default_tile_type_id = f"{tile_w_px}x{tile_h_px}" if tile_w_px > 0 and tile_h_px > 0 else "Manual"
+    if tile_w_px > 0 and tile_h_px > 0:
+        tiles[default_tile_type_id] = TileType(
+            tile_type_id=default_tile_type_id,
+            w_px=int(tile_w_px),
+            h_px=int(tile_h_px),
+        )
+
+    secondary_tile_type_id = None
+    secondary_placement = None
+    secondary_rows = 0
+    if has_half_row and tile_w_px > 0 and tile_h_px > 0:
+        half_h = int(tile_h_px // 2)
+        if half_h > 0:
+            secondary_tile_type_id = f"{default_tile_type_id}_HALF"
+            secondary_placement = "bottom"
+            secondary_rows = 1
+            tiles[secondary_tile_type_id] = TileType(
+                tile_type_id=secondary_tile_type_id,
+                w_px=int(tile_w_px),
+                h_px=half_h,
+            )
+
+    screens = [
+        ScreenSpec(
+            screen_name=screen_name,
+            tile_label=tile_label,
+            rows=max(1, int(total_rows)),
+            cols=max(1, int(cols_int)),
+            default_tile_type_id=default_tile_type_id,
+            secondary_tile_type_id=secondary_tile_type_id,
+            secondary_placement=secondary_placement,  # type: ignore[arg-type]
+            secondary_rows=int(secondary_rows),
+            base_color_name=base_color_name,
+            expected_w_px=int(expected_w_px) if expected_w_px else None,
+            expected_h_px=int(expected_h_px) if expected_h_px else None,
+        )
+    ]
 
 lineup_type = st.radio(
     "Lineup type",
