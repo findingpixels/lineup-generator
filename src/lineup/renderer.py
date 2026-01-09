@@ -157,8 +157,23 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
         title = screen.screen_name
         subtitle = f"{total_w}x{total_h}"
 
-        overlay_title_font = _load_font(opts.font_name, max(20, int(min(total_w, total_h) * opts.overlay_title_frac)))
-        overlay_sub_font = _load_font(opts.font_name, max(16, int(min(total_w, total_h) * opts.overlay_sub_frac)))
+        overlay_max_w = total_w * 0.85
+        overlay_title_size = _fit_font_size_to_width(
+            opts.font_name,
+            title,
+            overlay_max_w,
+            max_size=max(20, int(min(total_w, total_h) * opts.overlay_title_frac)),
+            min_size=20,
+        )
+        overlay_sub_size = _fit_font_size_to_width(
+            opts.font_name,
+            subtitle,
+            overlay_max_w,
+            max_size=max(16, int(min(total_w, total_h) * opts.overlay_sub_frac)),
+            min_size=16,
+        )
+        overlay_title_font = _load_font(opts.font_name, overlay_title_size)
+        overlay_sub_font = _load_font(opts.font_name, overlay_sub_size)
 
         _draw_centered_multiline(
             draw,

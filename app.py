@@ -21,8 +21,18 @@ st.title("Lineup Guide Generator")
 st.markdown(
     "Load a **screen notes CSV** (or connect a Google Sheet), select a screen, preview it, then export a PNG."
 )
+st.markdown(
+    """
+    <style>
+    button[aria-label="Refresh"] {
+        height: 3.25rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-data_source = st.radio("Data source", ["Upload CSV", "Google Sheets"], horizontal=True)
+data_source = st.radio("Data source", ["Google Sheets", "Upload CSV"], horizontal=True)
 
 tiles = None
 screens = None
@@ -42,12 +52,20 @@ if data_source == "Upload CSV":
         st.stop()
 else:
     st.caption("Sheets must be shared as 'Anyone with the link' or public.")
-    sheet_url = st.text_input("Google Sheet URL")
+    url_col, refresh_col = st.columns([6, 1], vertical_alignment="bottom")
+    with url_col:
+        sheet_url = st.text_input("Google Sheet URL")
+    with refresh_col:
+        refresh_clicked = st.button("Refresh", use_container_width=True)
     sheet_name = None
 
     @st.cache_data(show_spinner=False)
     def _get_sheet_names(url: str) -> list[str]:
         return fetch_google_sheet_names(url)
+
+    if refresh_clicked:
+        st.cache_data.clear()
+        st.rerun()
 
     if not sheet_url:
         st.info("Paste the Google Sheet URL to begin.")
@@ -77,6 +95,22 @@ warnings = validate_screen_against_tiles(screen, tiles)
 if warnings:
     st.warning("\n".join(f"- {w}" for w in warnings))
 
+lineup_type = st.radio(
+    "Lineup type",
+    ["RGB", "Greyscale (coming soon)", "Circle X (coming soon)", "Circle X Grid (coming soon)"],
+    horizontal=True,
+)
+lineup_type_map = {
+    "RGB": "RGB",
+    "Greyscale (coming soon)": "Grey",
+    "Circle X (coming soon)": "CircleX",
+    "Circle X Grid (coming soon)": "CircleXGrid",
+}
+lineup_type_label = lineup_type_map[lineup_type]
+if lineup_type != "RGB":
+    st.info("Only RGB lineups are available right now.")
+    st.stop()
+
 st.subheader("Preview")
 
 # Overlay toggle (defaults on)
@@ -104,7 +138,10 @@ def _get_default_output_dir() -> Path:
     return Path.cwd() / "outputs"
 
 default_out_dir = _get_default_output_dir()
-out_name = st.text_input("Output filename", value=f"{screen.screen_name}.png")
+version = st.text_input("Version", value="v001").strip() or "v001"
+overlay_suffix = "_OV" if show_overlay else ""
+default_out_name = f"{lineup_type_label}{overlay_suffix}_{screen.tile_label}_{version}.png"
+out_name = st.text_input("Output filename", value=default_out_name)
 out_dir = st.text_input("Output folder", value=str(default_out_dir))
 out_path_dir = Path(out_dir)
 if not out_path_dir.is_absolute():
@@ -132,7 +169,7 @@ if btn_col2.button("Export ALL PNGs"):
     progress = st.progress(0)
     total = len(screens)
     for idx, scr in enumerate(screens, start=1):
-        out_path = out_path_dir / f"{scr.screen_name}.png"
+        out_path = out_path_dir / f"{lineup_type_label}{overlay_suffix}_{scr.tile_label}_{version}.png"
         render_lineup_png(scr, tiles, opts).save(out_path, format="PNG")
         progress.progress(idx / total)
     st.success(f"Saved {total} files to: {out_path_dir.resolve()}")
