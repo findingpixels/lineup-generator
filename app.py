@@ -86,15 +86,6 @@ else:
         st.error(f"Failed to load Google Sheet: {exc}")
         st.stop()
 
-screen_names = [s.screen_name for s in screens]
-selected = st.selectbox("Select a screen", screen_names)
-screen = next(s for s in screens if s.screen_name == selected)
-
-warnings = validate_screen_against_tiles(screen, tiles)
-
-if warnings:
-    st.warning("\n".join(f"- {w}" for w in warnings))
-
 lineup_type = st.radio(
     "Lineup type",
     ["RGB", "Greyscale Steps", "Circle X Grid"],
@@ -106,6 +97,65 @@ lineup_type_map = {
     "Circle X Grid": "CircleXGrid",
 }
 lineup_type_label = lineup_type_map[lineup_type]
+
+def _has_tile_specs(spec) -> bool:
+    return spec.default_tile_type_id in tiles
+
+def _has_expected_size(spec) -> bool:
+    return (spec.expected_w_px or 0) > 0 and (spec.expected_h_px or 0) > 0
+
+def _has_delivery_label(spec) -> bool:
+    return bool(spec.tile_label)
+
+if lineup_type_label == "CircleXGrid":
+    eligible_screens = [s for s in screens if _has_expected_size(s) and _has_delivery_label(s)]
+    if not eligible_screens:
+        st.error("No screens with delivery label + pixel width/height (columns D/F/G).")
+        st.stop()
+elif lineup_type_label == "GreyscaleSteps":
+    eligible_screens = [
+        s for s in screens if _has_delivery_label(s) and (_has_tile_specs(s) or _has_expected_size(s))
+    ]
+    if not eligible_screens:
+        st.error("No screens with delivery label + either tile specs or pixel width/height.")
+        st.stop()
+else:
+    eligible_screens = [s for s in screens if _has_tile_specs(s)]
+    if not eligible_screens:
+        st.error("No screens with LED tile specs (cols/rows + tile pixel size).")
+        st.stop()
+
+screen_names = [s.screen_name for s in eligible_screens]
+selected = st.selectbox("Select a screen", screen_names)
+screen = next(s for s in eligible_screens if s.screen_name == selected)
+
+if lineup_type_label == "CircleXGrid":
+    warnings = []
+    if not _has_delivery_label(screen):
+        warnings.append("Delivery label (column D) is required.")
+    if not _has_expected_size(screen):
+        warnings.append("Pixels width/height (columns F/G) are required for Circle X Grid.")
+elif lineup_type_label == "GreyscaleSteps":
+    warnings = []
+    if not _has_delivery_label(screen):
+        warnings.append("Delivery label (column D) is required.")
+    if not (_has_tile_specs(screen) or _has_expected_size(screen)):
+        warnings.append("Greyscale needs either tile specs or pixels width/height.")
+else:
+    warnings = validate_screen_against_tiles(screen, tiles)
+
+if warnings:
+    st.warning("\n".join(f"- {w}" for w in warnings))
+
+if lineup_type_label == "RGB" and screen.default_tile_type_id not in tiles:
+    st.error("RGB requires LED tile specs (cols/rows + tile pixel size).")
+    st.stop()
+if lineup_type_label == "GreyscaleSteps" and not (_has_tile_specs(screen) or _has_expected_size(screen)):
+    st.error("Greyscale requires tile specs or pixel width/height.")
+    st.stop()
+
+if lineup_type_label in {"CircleXGrid", "GreyscaleSteps"} and warnings:
+    st.stop()
 
 st.subheader("Preview")
 

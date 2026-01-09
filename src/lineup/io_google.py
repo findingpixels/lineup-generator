@@ -140,59 +140,67 @@ def load_screens_from_google_csv(text: str) -> tuple[dict[str, TileType], list[S
     screens: list[ScreenSpec] = []
 
     for row_num, row in enumerate(reader, start=1):
-        if not _get_cell(row, COL_TILE_LABEL):
+        tile_label_raw = _get_cell(row, COL_TILE_LABEL)
+        if not tile_label_raw:
             continue
 
-        cols_raw = _get_cell(row, COL_COLS)
-        rows_raw = _get_cell(row, COL_ROWS)
-        if not _is_number(cols_raw) or not _is_number(rows_raw):
-            continue
-
-        w_raw = _get_cell(row, COL_TILE_W)
-        h_raw = _get_cell(row, COL_TILE_H)
-        if not _is_number(w_raw) or not _is_number(h_raw):
-            continue
-
-        cols = _parse_int(cols_raw, "cols", row_num)
-        rows_float = _parse_float(rows_raw, "rows", row_num)
-        w_px = _parse_int(w_raw, "tile w_px", row_num)
-        h_px = _parse_int(h_raw, "tile h_px", row_num)
-
-        screen_name = _get_cell(row, COL_SCREEN_NAME) or "SCREEN"
-        tile_label = _get_cell(row, COL_TILE_LABEL) or screen_name
-        base_color_name = _get_cell(row, COL_BASE_COLOR) or "Blue"
         expected_w = _get_cell(row, COL_EXPECTED_W)
         expected_h = _get_cell(row, COL_EXPECTED_H)
 
-        default_tile_type_id = f"{w_px}x{h_px}"
-        if default_tile_type_id not in tiles:
-            tiles[default_tile_type_id] = TileType(
-                tile_type_id=default_tile_type_id,
-                w_px=w_px,
-                h_px=h_px,
-            )
+        cols_raw = _get_cell(row, COL_COLS)
+        rows_raw = _get_cell(row, COL_ROWS)
+        w_raw = _get_cell(row, COL_TILE_W)
+        h_raw = _get_cell(row, COL_TILE_H)
+        has_tile_specs = (
+            _is_number(cols_raw)
+            and _is_number(rows_raw)
+            and _is_number(w_raw)
+            and _is_number(h_raw)
+        )
+
+        screen_name = _get_cell(row, COL_SCREEN_NAME) or "SCREEN"
+        tile_label = tile_label_raw or screen_name
+        base_color_name = _get_cell(row, COL_BASE_COLOR) or "Blue"
 
         secondary_tile_type_id = None
         secondary_rows = 0
         secondary_placement = None
 
-        full_rows = int(rows_float)
-        has_half_row = rows_float != full_rows
-        total_rows = full_rows
-        if has_half_row:
-            total_rows = full_rows + 1
-            secondary_rows = 1
-            secondary_placement = _normalize_placement(_get_cell(row, COL_SECONDARY_PLACEMENT)) or "bottom"
-            half_h = h_px // 2
-            if half_h <= 0:
-                raise ValueError(f"Row {row_num}: invalid half-height for tile h_px {h_px}")
-            secondary_tile_type_id = f"{w_px}x{half_h}"
-            if secondary_tile_type_id not in tiles:
-                tiles[secondary_tile_type_id] = TileType(
-                    tile_type_id=secondary_tile_type_id,
+        if has_tile_specs:
+            cols = _parse_int(cols_raw, "cols", row_num)
+            rows_float = _parse_float(rows_raw, "rows", row_num)
+            w_px = _parse_int(w_raw, "tile w_px", row_num)
+            h_px = _parse_int(h_raw, "tile h_px", row_num)
+
+            default_tile_type_id = f"{w_px}x{h_px}"
+            if default_tile_type_id not in tiles:
+                tiles[default_tile_type_id] = TileType(
+                    tile_type_id=default_tile_type_id,
                     w_px=w_px,
-                    h_px=half_h,
+                    h_px=h_px,
                 )
+
+            full_rows = int(rows_float)
+            has_half_row = rows_float != full_rows
+            total_rows = full_rows
+            if has_half_row:
+                total_rows = full_rows + 1
+                secondary_rows = 1
+                secondary_placement = _normalize_placement(_get_cell(row, COL_SECONDARY_PLACEMENT)) or "bottom"
+                half_h = h_px // 2
+                if half_h <= 0:
+                    raise ValueError(f"Row {row_num}: invalid half-height for tile h_px {h_px}")
+                secondary_tile_type_id = f"{w_px}x{half_h}"
+                if secondary_tile_type_id not in tiles:
+                    tiles[secondary_tile_type_id] = TileType(
+                        tile_type_id=secondary_tile_type_id,
+                        w_px=w_px,
+                        h_px=half_h,
+                    )
+        else:
+            cols = 1
+            total_rows = 1
+            default_tile_type_id = "CircleXGrid"
 
         screens.append(
             ScreenSpec(
@@ -205,8 +213,12 @@ def load_screens_from_google_csv(text: str) -> tuple[dict[str, TileType], list[S
                 secondary_placement=secondary_placement,  # type: ignore[arg-type]
                 secondary_rows=secondary_rows,
                 base_color_name=base_color_name,
-                expected_w_px=_parse_int(expected_w, "expected_w_px", row_num) if expected_w else None,
-                expected_h_px=_parse_int(expected_h, "expected_h_px", row_num) if expected_h else None,
+                expected_w_px=_parse_int(expected_w, "expected_w_px", row_num)
+                if _is_number(expected_w)
+                else None,
+                expected_h_px=_parse_int(expected_h, "expected_h_px", row_num)
+                if _is_number(expected_h)
+                else None,
             )
         )
 

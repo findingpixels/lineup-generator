@@ -107,7 +107,16 @@ def _greyscale_value(step_idx: int, steps: int) -> int:
 
 
 def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: RenderOptions) -> Image.Image:
-    total_w, total_h = compute_screen_resolution(screen, tiles)
+    if opts.lineup_type == "CircleXGrid":
+        if screen.expected_w_px is None or screen.expected_h_px is None:
+            raise ValueError("Circle X Grid requires expected pixel width/height.")
+        total_w, total_h = screen.expected_w_px, screen.expected_h_px
+    elif opts.lineup_type == "GreyscaleSteps" and (
+        screen.expected_w_px is not None and screen.expected_h_px is not None
+    ):
+        total_w, total_h = screen.expected_w_px, screen.expected_h_px
+    else:
+        total_w, total_h = compute_screen_resolution(screen, tiles)
     img = Image.new("RGB", (total_w, total_h), (0, 0, 0))
     draw = ImageDraw.Draw(img)
 
