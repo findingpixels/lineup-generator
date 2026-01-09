@@ -114,7 +114,27 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
     # Determine outline thickness
     stroke = max(1, int(min(total_w, total_h) * opts.outline_frac))
 
-    if opts.lineup_type == "GreyscaleSteps":
+    if opts.lineup_type == "CircleXGrid":
+        base_rgb = PALETTE.get(screen.base_color_name, PALETTE["Blue"])
+        draw.rectangle([0, 0, total_w, total_h], fill=base_rgb)
+
+        grid_spacing = max(1, int(round(total_w / 32)))
+        _draw_grid(
+            draw,
+            total_w,
+            total_h,
+            grid_spacing,
+            color=(255, 255, 255),
+            line_width=1,
+        )
+        _draw_circle_x(
+            draw,
+            total_w,
+            total_h,
+            color=(255, 255, 255),
+            line_width=10,
+        )
+    elif opts.lineup_type == "GreyscaleSteps":
         steps = 11
         heights = _compute_step_heights(total_h, steps)
         y = 0
@@ -202,16 +222,30 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
         overlay_title_font = _load_font(opts.font_name, overlay_title_size)
         overlay_sub_font = _load_font(opts.font_name, overlay_sub_size)
 
-        _draw_centered_multiline(
-            draw,
-            (total_w / 2, total_h / 2),
-            [title, subtitle],
-            [overlay_title_font, overlay_sub_font],
-            fill=opts.overlay_text_rgb,
-            stroke_fill=opts.outline_rgb,
-            stroke_width=stroke,
-            line_spacing=0.25,
-        )
+        if opts.lineup_type == "CircleXGrid":
+            _draw_centered_split_lines(
+                draw,
+                (total_w / 2, total_h / 2),
+                title,
+                subtitle,
+                overlay_title_font,
+                overlay_sub_font,
+                fill=opts.overlay_text_rgb,
+                stroke_fill=opts.outline_rgb,
+                stroke_width=stroke,
+                gap=max(int(min(total_w, total_h) * 0.08), int(overlay_title_size * 1.2)),
+            )
+        else:
+            _draw_centered_multiline(
+                draw,
+                (total_w / 2, total_h / 2),
+                [title, subtitle],
+                [overlay_title_font, overlay_sub_font],
+                fill=opts.overlay_text_rgb,
+                stroke_fill=opts.outline_rgb,
+                stroke_width=stroke,
+                line_spacing=0.25,
+            )
 
     return img
 
@@ -224,3 +258,83 @@ def _parse_dual_colors(name: str) -> tuple[tuple[int, int, int], tuple[int, int,
     if parts[0] not in PALETTE or parts[1] not in PALETTE:
         return None
     return (PALETTE[parts[0]], PALETTE[parts[1]])
+
+def _draw_centered_split_lines(
+    draw: ImageDraw.ImageDraw,
+    xy,
+    top_line: str,
+    bottom_line: str,
+    top_font: ImageFont.ImageFont,
+    bottom_font: ImageFont.ImageFont,
+    fill,
+    stroke_fill,
+    stroke_width,
+    gap: int,
+) -> None:
+    x, y = xy
+    top_bbox = draw.textbbox((0, 0), top_line, font=top_font, stroke_width=stroke_width)
+    top_w = top_bbox[2] - top_bbox[0]
+    top_h = top_bbox[3] - top_bbox[1]
+
+    bottom_bbox = draw.textbbox((0, 0), bottom_line, font=bottom_font, stroke_width=stroke_width)
+    bottom_w = bottom_bbox[2] - bottom_bbox[0]
+    bottom_h = bottom_bbox[3] - bottom_bbox[1]
+
+    top_y = y - gap / 2 - top_h
+    bottom_y = y + gap / 2
+
+    draw.text(
+        (x - top_w / 2, top_y),
+        top_line,
+        font=top_font,
+        fill=fill,
+        stroke_fill=stroke_fill,
+        stroke_width=stroke_width,
+    )
+    draw.text(
+        (x - bottom_w / 2, bottom_y),
+        bottom_line,
+        font=bottom_font,
+        fill=fill,
+        stroke_fill=stroke_fill,
+        stroke_width=stroke_width,
+    )
+
+def _draw_grid(
+    draw: ImageDraw.ImageDraw,
+    total_w: int,
+    total_h: int,
+    spacing: int,
+    color: Tuple[int, int, int],
+    line_width: int,
+) -> None:
+    if spacing <= 0:
+        return
+
+    remainder = total_h % spacing
+    y_offset = remainder // 2
+
+    x = 0
+    while x <= total_w:
+        draw.line((x, 0, x, total_h), fill=color, width=line_width)
+        x += spacing
+
+    y = -y_offset
+    while y <= total_h:
+        draw.line((0, y, total_w, y), fill=color, width=line_width)
+        y += spacing
+
+def _draw_circle_x(
+    draw: ImageDraw.ImageDraw,
+    total_w: int,
+    total_h: int,
+    color: Tuple[int, int, int],
+    line_width: int,
+) -> None:
+    cx = total_w / 2
+    cy = total_h / 2
+    radius = int(round(min(total_w, total_h) * 0.45))
+    bbox = [cx - radius, cy - radius, cx + radius, cy + radius]
+    draw.ellipse(bbox, outline=color, width=line_width)
+    draw.line((0, 0, total_w, total_h), fill=color, width=line_width)
+    draw.line((0, total_h, total_w, 0), fill=color, width=line_width)

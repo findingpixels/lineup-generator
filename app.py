@@ -97,19 +97,15 @@ if warnings:
 
 lineup_type = st.radio(
     "Lineup type",
-    ["RGB", "Greyscale Steps", "Circle X (coming soon)", "Circle X Grid (coming soon)"],
+    ["RGB", "Greyscale Steps", "Circle X Grid"],
     horizontal=True,
 )
 lineup_type_map = {
     "RGB": "RGB",
     "Greyscale Steps": "GreyscaleSteps",
-    "Circle X (coming soon)": "CircleX",
-    "Circle X Grid (coming soon)": "CircleXGrid",
+    "Circle X Grid": "CircleXGrid",
 }
 lineup_type_label = lineup_type_map[lineup_type]
-if lineup_type not in {"RGB", "Greyscale Steps"}:
-    st.info("Only RGB and Greyscale Steps lineups are available right now.")
-    st.stop()
 
 st.subheader("Preview")
 
