@@ -136,7 +136,12 @@ def _get_default_output_dir() -> Path:
 default_out_dir = _get_default_output_dir()
 version = st.text_input("Version", value="v001").strip() or "v001"
 overlay_suffix = "_OV" if show_overlay else ""
-file_prefix = "GREY" if lineup_type_label == "GreyscaleSteps" else lineup_type_label
+if lineup_type_label == "GreyscaleSteps":
+    file_prefix = "GREY"
+elif lineup_type_label == "CircleXGrid":
+    file_prefix = "CircleX"
+else:
+    file_prefix = lineup_type_label
 default_out_name = f"{file_prefix}{overlay_suffix}_{screen.tile_label}_{version}.png"
 out_name = st.text_input("Output filename", value=default_out_name)
 out_dir = st.text_input("Output folder", value=str(default_out_dir))
