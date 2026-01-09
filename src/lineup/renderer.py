@@ -97,6 +97,7 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
     img = Image.new("RGB", (total_w, total_h), (0, 0, 0))
     draw = ImageDraw.Draw(img)
 
+    dual_colors = _parse_dual_colors(screen.base_color_name)
     base_rgb = PALETTE.get(screen.base_color_name, PALETTE["Blue"])
 
     # Determine outline thickness
@@ -124,7 +125,10 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
 
         for c in range(screen.cols):
             # checkerboard by row/col so rows alternate (prevents full-row stripes)
-            fill_rgb = darken(base_rgb, 0.75) if ((r + c) % 2 == 0) else base_rgb
+            if dual_colors:
+                fill_rgb = dual_colors[0] if ((r + c) % 2 == 0) else dual_colors[1]
+            else:
+                fill_rgb = darken(base_rgb, 0.75) if ((r + c) % 2 == 0) else base_rgb
             draw.rectangle([x, y, x + tile.w_px, y + tile.h_px], fill=fill_rgb)
 
             # Tile label + number (two lines centered)
@@ -187,3 +191,13 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
         )
 
     return img
+
+def _parse_dual_colors(name: str) -> tuple[tuple[int, int, int], tuple[int, int, int]] | None:
+    if "," not in name:
+        return None
+    parts = [part.strip() for part in name.split(",")]
+    if len(parts) != 2:
+        return None
+    if parts[0] not in PALETTE or parts[1] not in PALETTE:
+        return None
+    return (PALETTE[parts[0]], PALETTE[parts[1]])
