@@ -29,6 +29,8 @@ class RenderOptions:
     # Overlay options
     show_overlay: bool = True
 
+    lineup_type: str = "RGB"
+
 def _load_font(font_name: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     candidates = (
         font_name,
@@ -92,69 +94,90 @@ def _draw_centered_multiline(draw: ImageDraw.ImageDraw, xy, lines, fonts, fill, 
         )
         cur_y += h + int(h * line_spacing)
 
+
+def _compute_step_heights(total_h: int, steps: int) -> list[int]:
+    base = total_h // steps
+    remainder = total_h % steps
+    return [base + (1 if i < remainder else 0) for i in range(steps)]
+
+def _greyscale_value(step_idx: int, steps: int) -> int:
+    if steps <= 1:
+        return 0
+    return int(round(255 * step_idx / (steps - 1)))
+
+
 def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: RenderOptions) -> Image.Image:
     total_w, total_h = compute_screen_resolution(screen, tiles)
     img = Image.new("RGB", (total_w, total_h), (0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    dual_colors = _parse_dual_colors(screen.base_color_name)
-    base_rgb = PALETTE.get(screen.base_color_name, PALETTE["Blue"])
-
     # Determine outline thickness
     stroke = max(1, int(min(total_w, total_h) * opts.outline_frac))
 
-    # Draw tiles + per-tile text
-    tile_index = 1
-    y = 0
-    for r in range(screen.rows):
-        tile_type_id = compute_row_tile_type_id(screen, r)
-        tile = tiles[tile_type_id]
-        x = 0
+    if opts.lineup_type == "GreyscaleSteps":
+        steps = 11
+        heights = _compute_step_heights(total_h, steps)
+        y = 0
+        for i, h in enumerate(heights):
+            v = _greyscale_value(i, steps)
+            draw.rectangle([0, y, total_w, y + h], fill=(v, v, v))
+            y += h
+    else:
+        dual_colors = _parse_dual_colors(screen.base_color_name)
+        base_rgb = PALETTE.get(screen.base_color_name, PALETTE["Blue"])
 
-        # Fonts scale to fit label width; number uses same size as label.
-        max_label_w = tile.w_px * opts.tile_label_width_frac
-        label_size = _fit_font_size_to_width(
-            opts.font_name,
-            screen.tile_label,
-            max_label_w,
-            max_size=int(tile.w_px),
-        )
-        label_size = max(10, int(label_size * 0.8))
-        label_font = _load_font(opts.font_name, label_size)
-        num_font = label_font
+        # Draw tiles + per-tile text
+        tile_index = 1
+        y = 0
+        for r in range(screen.rows):
+            tile_type_id = compute_row_tile_type_id(screen, r)
+            tile = tiles[tile_type_id]
+            x = 0
 
-        for c in range(screen.cols):
-            # checkerboard by row/col so rows alternate (prevents full-row stripes)
-            if dual_colors:
-                fill_rgb = dual_colors[0] if ((r + c) % 2 == 0) else dual_colors[1]
-            else:
-                fill_rgb = darken(base_rgb, 0.75) if ((r + c) % 2 == 0) else base_rgb
-            draw.rectangle([x, y, x + tile.w_px, y + tile.h_px], fill=fill_rgb)
+            # Fonts scale to fit label width; number uses same size as label.
+            max_label_w = tile.w_px * opts.tile_label_width_frac
+            label_size = _fit_font_size_to_width(
+                opts.font_name,
+                screen.tile_label,
+                max_label_w,
+                max_size=int(tile.w_px),
+            )
+            label_size = max(10, int(label_size * 0.8))
+            label_font = _load_font(opts.font_name, label_size)
+            num_font = label_font
 
-            # Tile label + number (two lines centered)
-            cx = x + tile.w_px / 2
-            # Place label near top-ish and number near bottom-ish like examples
-            label_y = y + tile.h_px * 0.22
-            num_y = y + tile.h_px * 0.62
+            for c in range(screen.cols):
+                # checkerboard by row/col so rows alternate (prevents full-row stripes)
+                if dual_colors:
+                    fill_rgb = dual_colors[0] if ((r + c) % 2 == 0) else dual_colors[1]
+                else:
+                    fill_rgb = darken(base_rgb, 0.75) if ((r + c) % 2 == 0) else base_rgb
+                draw.rectangle([x, y, x + tile.w_px, y + tile.h_px], fill=fill_rgb)
 
-            # Centered text with no stroke for tile text (matches samples)
-            # (You can add stroke here if desired.)
-            lb = screen.tile_label
-            nb = f"{tile_index:02d}"
+                # Tile label + number (two lines centered)
+                cx = x + tile.w_px / 2
+                # Place label near top-ish and number near bottom-ish like examples
+                label_y = y + tile.h_px * 0.22
+                num_y = y + tile.h_px * 0.62
 
-            bbox_l = draw.textbbox((0, 0), lb, font=label_font)
-            lw = bbox_l[2] - bbox_l[0]
-            lh = bbox_l[3] - bbox_l[1]
-            draw.text((cx - lw / 2, label_y - lh / 2), lb, font=label_font, fill=opts.tile_text_rgb)
+                # Centered text with no stroke for tile text (matches samples)
+                # (You can add stroke here if desired.)
+                lb = screen.tile_label
+                nb = f"{tile_index:02d}"
 
-            bbox_n = draw.textbbox((0, 0), nb, font=num_font)
-            nw = bbox_n[2] - bbox_n[0]
-            nh = bbox_n[3] - bbox_n[1]
-            draw.text((cx - nw / 2, num_y - nh / 2), nb, font=num_font, fill=opts.tile_text_rgb)
+                bbox_l = draw.textbbox((0, 0), lb, font=label_font)
+                lw = bbox_l[2] - bbox_l[0]
+                lh = bbox_l[3] - bbox_l[1]
+                draw.text((cx - lw / 2, label_y - lh / 2), lb, font=label_font, fill=opts.tile_text_rgb)
 
-            tile_index += 1
-            x += tile.w_px
-        y += tile.h_px
+                bbox_n = draw.textbbox((0, 0), nb, font=num_font)
+                nw = bbox_n[2] - bbox_n[0]
+                nh = bbox_n[3] - bbox_n[1]
+                draw.text((cx - nw / 2, num_y - nh / 2), nb, font=num_font, fill=opts.tile_text_rgb)
+
+                tile_index += 1
+                x += tile.w_px
+            y += tile.h_px
 
     if opts.show_overlay:
         # Center overlay (draw last)

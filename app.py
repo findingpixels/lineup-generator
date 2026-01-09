@@ -97,18 +97,18 @@ if warnings:
 
 lineup_type = st.radio(
     "Lineup type",
-    ["RGB", "Greyscale (coming soon)", "Circle X (coming soon)", "Circle X Grid (coming soon)"],
+    ["RGB", "Greyscale Steps", "Circle X (coming soon)", "Circle X Grid (coming soon)"],
     horizontal=True,
 )
 lineup_type_map = {
     "RGB": "RGB",
-    "Greyscale (coming soon)": "Grey",
+    "Greyscale Steps": "GreyscaleSteps",
     "Circle X (coming soon)": "CircleX",
     "Circle X Grid (coming soon)": "CircleXGrid",
 }
 lineup_type_label = lineup_type_map[lineup_type]
-if lineup_type != "RGB":
-    st.info("Only RGB lineups are available right now.")
+if lineup_type not in {"RGB", "Greyscale Steps"}:
+    st.info("Only RGB and Greyscale Steps lineups are available right now.")
     st.stop()
 
 st.subheader("Preview")
@@ -117,7 +117,7 @@ st.subheader("Preview")
 show_overlay = st.toggle("Overlay (screen name + resolution)", value=True)
 
 # Render preview in-memory
-opts = RenderOptions(show_overlay=show_overlay)
+opts = RenderOptions(show_overlay=show_overlay, lineup_type=lineup_type_label)
 img = render_lineup_png(screen, tiles, opts)
 
 st.image(img, caption=f"{screen.screen_name} ({img.width}x{img.height})", use_container_width=True)
@@ -140,7 +140,8 @@ def _get_default_output_dir() -> Path:
 default_out_dir = _get_default_output_dir()
 version = st.text_input("Version", value="v001").strip() or "v001"
 overlay_suffix = "_OV" if show_overlay else ""
-default_out_name = f"{lineup_type_label}{overlay_suffix}_{screen.tile_label}_{version}.png"
+file_prefix = "GREY" if lineup_type_label == "GreyscaleSteps" else lineup_type_label
+default_out_name = f"{file_prefix}{overlay_suffix}_{screen.tile_label}_{version}.png"
 out_name = st.text_input("Output filename", value=default_out_name)
 out_dir = st.text_input("Output folder", value=str(default_out_dir))
 out_path_dir = Path(out_dir)
@@ -169,7 +170,7 @@ if btn_col2.button("Export ALL PNGs"):
     progress = st.progress(0)
     total = len(screens)
     for idx, scr in enumerate(screens, start=1):
-        out_path = out_path_dir / f"{lineup_type_label}{overlay_suffix}_{scr.tile_label}_{version}.png"
+        out_path = out_path_dir / f"{file_prefix}{overlay_suffix}_{scr.tile_label}_{version}.png"
         render_lineup_png(scr, tiles, opts).save(out_path, format="PNG")
         progress.progress(idx / total)
     st.success(f"Saved {total} files to: {out_path_dir.resolve()}")
