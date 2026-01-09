@@ -161,9 +161,23 @@ st.subheader("Preview")
 
 # Overlay toggle (defaults on)
 show_overlay = st.toggle("Overlay (screen name + resolution)", value=True)
+branding_file = st.file_uploader("Branding PNG (optional)", type=["png"], key="branding_png")
+branding_image = None
+if branding_file:
+    try:
+        branding_image = Image.open(branding_file).convert("RGBA")
+    except OSError:
+        st.error("Failed to load branding PNG.")
+        st.stop()
+    if branding_image.size != (1000, 1000):
+        st.caption("Branding PNG is not 1000x1000; it will be used at its native size (scaled to fit if needed).")
 
 # Render preview in-memory
-opts = RenderOptions(show_overlay=show_overlay, lineup_type=lineup_type_label)
+opts = RenderOptions(
+    show_overlay=show_overlay,
+    lineup_type=lineup_type_label,
+    branding_image=branding_image,
+)
 img = render_lineup_png(screen, tiles, opts)
 
 st.image(img, caption=f"{screen.screen_name} ({img.width}x{img.height})", use_container_width=True)
@@ -219,8 +233,8 @@ if btn_col1.button("Export PNG"):
 
 if btn_col2.button("Export ALL PNGs"):
     progress = st.progress(0)
-    total = len(screens)
-    for idx, scr in enumerate(screens, start=1):
+    total = len(eligible_screens)
+    for idx, scr in enumerate(eligible_screens, start=1):
         out_path = out_path_dir / f"{file_prefix}{overlay_suffix}_{scr.tile_label}_{version}.png"
         render_lineup_png(scr, tiles, opts).save(out_path, format="PNG")
         progress.progress(idx / total)

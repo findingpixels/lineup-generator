@@ -29,6 +29,9 @@ class RenderOptions:
     # Overlay options
     show_overlay: bool = True
 
+    # Optional branding overlay (PNG with alpha)
+    branding_image: Image.Image | None = None
+
     lineup_type: str = "RGB"
 
 def _load_font(font_name: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -94,6 +97,13 @@ def _draw_centered_multiline(draw: ImageDraw.ImageDraw, xy, lines, fonts, fill, 
         )
         cur_y += h + int(h * line_spacing)
 
+def _fit_image_to_canvas(img: Image.Image, max_w: int, max_h: int) -> Image.Image:
+    if img.width <= max_w and img.height <= max_h:
+        return img
+    scale = min(max_w / img.width, max_h / img.height)
+    new_w = max(1, int(round(img.width * scale)))
+    new_h = max(1, int(round(img.height * scale)))
+    return img.resize((new_w, new_h), Image.LANCZOS)
 
 def _compute_step_heights(total_h: int, steps: int) -> list[int]:
     base = total_h // steps
@@ -207,6 +217,13 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
                 tile_index += 1
                 x += tile.w_px
             y += tile.h_px
+
+    if opts.branding_image is not None:
+        branding = opts.branding_image
+        if branding.mode != "RGBA":
+            branding = branding.convert("RGBA")
+        branding = _fit_image_to_canvas(branding, total_w, total_h)
+        img.paste(branding, (0, total_h - branding.height), branding)
 
     if opts.show_overlay:
         # Center overlay (draw last)
