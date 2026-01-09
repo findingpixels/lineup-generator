@@ -58,11 +58,11 @@ def validate_screen_against_tiles(screen: ScreenSpec, tiles: dict[str, TileType]
 
     # Check tile ids exist
     if screen.default_tile_type_id not in tiles:
-        warnings.append(f"Default tile type '{screen.default_tile_type_id}' not found in tiles.csv")
+        warnings.append(f"Default tile type '{screen.default_tile_type_id}' not found in tile definitions")
         return warnings
 
     if screen.secondary_tile_type_id and screen.secondary_tile_type_id not in tiles:
-        warnings.append(f"Secondary tile type '{screen.secondary_tile_type_id}' not found in tiles.csv")
+        warnings.append(f"Secondary tile type '{screen.secondary_tile_type_id}' not found in tile definitions")
 
     if screen.secondary_rows < 0:
         warnings.append("secondary_rows cannot be negative")

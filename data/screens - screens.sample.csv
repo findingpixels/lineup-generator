@@ -1,5 +1,0 @@
-screen_name,tile_label,rows,cols,default_tile_type_id,secondary_tile_type_id,secondary_placement,secondary_rows,base_color_name,expected_w_px,expected_h_px
-Screen A,SCA,6,24,CB3_Full,,,0,Red,3840,1920
-Screen B,SCB,6,12,CB5_Full,,,0,Green,1248,1248
-Screen C,SCC,6,24,CB3_Full,,,0,Blue,3840,1920
-Screen D,SCD,7,24,CB3_Full,CB3_Half,bottom,1,Yellow,3840,2080

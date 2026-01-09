@@ -5,7 +5,6 @@ from pathlib import Path
 import streamlit as st
 from PIL import Image
 
-from src.lineup.io_csv import load_screens_csv, load_tiles_csv
 from src.lineup.io_google import (
     fetch_google_sheet_csv,
     fetch_google_sheet_names,
