@@ -1,5 +1,6 @@
 import io
 import sys
+import string
 from pathlib import Path
 
 import streamlit as st
@@ -22,6 +23,16 @@ st.markdown(
     "Load a **screen notes CSV**, connect a Google Sheet, or enter details manually. "
     "Then select a screen, preview it, and export a PNG."
 )
+
+def _normalize_hex_color(value: str) -> str | None:
+    raw = value.strip()
+    if not raw:
+        return None
+    if raw.startswith("#"):
+        raw = raw[1:]
+    if len(raw) != 6 or any(ch not in string.hexdigits for ch in raw):
+        return None
+    return f"#{raw.upper()}"
 st.markdown(
     """
     <style>
@@ -32,8 +43,9 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+st.subheader("Data Source")
+data_source = st.radio("Data source", ["Google Sheets", "Upload CSV", "Manual Entry"], horizontal=True, label_visibility="hidden")
 
-data_source = st.radio("Data source", ["Google Sheets", "Upload CSV", "Manual Entry"], horizontal=True)
 
 tiles = None
 screens = None
@@ -87,7 +99,7 @@ elif data_source == "Google Sheets":
         st.error(f"Failed to load Google Sheet: {exc}")
         st.stop()
 else:
-    st.subheader("Manual Entry")
+    st.header("Manual Entry")
     st.caption("Enter screen details directly (no sheet or CSV required).")
 
     st.markdown("### Screen")
@@ -96,16 +108,23 @@ else:
         screen_name = st.text_input("Screen name", value="SCREEN").strip() or "SCREEN"
         tile_label = st.text_input("Delivery label", value=screen_name).strip() or screen_name
         palette_names = list(PALETTE.keys())
-        base_color_name = st.selectbox(
-            "Lineup Color",
-            options=palette_names,
-            index=palette_names.index("Blue") if "Blue" in palette_names else 0,
-            help="Pick a palette color.",
-        )
+        color_col, hex_col = st.columns([2, 1])
+        with color_col:
+            base_color_name = st.selectbox(
+                "Lineup Color",
+                options=palette_names,
+                index=palette_names.index("Blue") if "Blue" in palette_names else 0,
+                help="Pick a palette color.",
+            )
+        with hex_col:
+            hex_color_input = st.text_input("Hex color", value="", placeholder="#RRGGBB").strip()
+        base_color_hex = _normalize_hex_color(hex_color_input)
+        if base_color_hex:
+            base_color_name = base_color_hex
 
     with screen_col2:
-        expected_w_px = st.number_input("Pixels width", min_value=0, value=0, step=1)
-        expected_h_px = st.number_input("Pixels height", min_value=0, value=0, step=1)
+        expected_w_px = st.number_input("Screen Width (px)", min_value=0, value=0, step=1)
+        expected_h_px = st.number_input("Screen Height (px)", min_value=0, value=0, step=1)
 
     st.markdown("### LED")
     led_col1, led_col2 = st.columns(2)
@@ -165,13 +184,16 @@ else:
         )
     ]
 
+
+st.subheader("Lineup Type")
 lineup_type = st.radio(
-    "Lineup type",
-    ["RGB", "Greyscale Steps", "Circle X Grid"],
+    "Lineup Type",
+    ["RGB LED Tiles", "Greyscale Steps", "Circle X Grid"],
     horizontal=True,
+    label_visibility="hidden",
 )
 lineup_type_map = {
-    "RGB": "RGB",
+    "RGB LED Tiles": "RGB",
     "Greyscale Steps": "GreyscaleSteps",
     "Circle X Grid": "CircleXGrid",
 }
@@ -236,10 +258,13 @@ if lineup_type_label == "GreyscaleSteps" and not (_has_tile_specs(screen) or _ha
 if lineup_type_label in {"CircleXGrid", "GreyscaleSteps"} and warnings:
     st.stop()
 
-st.subheader("Preview")
+st.header("Preview")
 
 # Overlay toggle (defaults on)
 show_overlay = st.toggle("Overlay (screen name + resolution)", value=True)
+circlex_black_bg = False
+if lineup_type_label == "CircleXGrid":
+    circlex_black_bg = st.toggle("Circle X Grid: Override black background", value=False)
 branding_file = st.file_uploader("Branding PNG (optional)", type=["png"], key="branding_png")
 branding_image = None
 if branding_file:
@@ -256,12 +281,13 @@ opts = RenderOptions(
     show_overlay=show_overlay,
     lineup_type=lineup_type_label,
     branding_image=branding_image,
+    circlex_grid_black_bg=circlex_black_bg,
 )
 img = render_lineup_png(screen, tiles, opts)
 
 st.image(img, caption=f"{screen.screen_name} ({img.width}x{img.height})", use_container_width=True)
 
-st.subheader("Export")
+st.header("Export")
 
 def _get_default_output_dir() -> Path:
     if getattr(sys, "frozen", False):
@@ -286,8 +312,8 @@ elif lineup_type_label == "CircleXGrid":
 else:
     file_prefix = lineup_type_label
 default_out_name = f"{file_prefix}{overlay_suffix}_{screen.tile_label}_{version}.png"
-out_name = st.text_input("Output filename", value=default_out_name)
-out_dir = st.text_input("Output folder", value=str(default_out_dir))
+out_name = st.text_input("Output Filename", value=default_out_name)
+out_dir = st.text_input("Output Folder", value=str(default_out_dir))
 out_path_dir = Path(out_dir)
 if not out_path_dir.is_absolute():
     out_path_dir = default_out_dir.parent / out_path_dir

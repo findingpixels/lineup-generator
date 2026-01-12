@@ -28,6 +28,7 @@ class RenderOptions:
 
     # Overlay options
     show_overlay: bool = True
+    circlex_grid_black_bg: bool = False
 
     # Optional branding overlay (PNG with alpha)
     branding_image: Image.Image | None = None
@@ -134,18 +135,22 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
     stroke = max(1, int(min(total_w, total_h) * opts.outline_frac))
 
     if opts.lineup_type == "CircleXGrid":
-        base_rgb = PALETTE.get(screen.base_color_name, PALETTE["Blue"])
+        if opts.circlex_grid_black_bg:
+            base_rgb = (0, 0, 0)
+        else:
+            base_rgb = _resolve_color(screen.base_color_name)
         draw.rectangle([0, 0, total_w, total_h], fill=base_rgb)
 
-        grid_spacing = max(1, int(round(total_w / 32)))
+        grid_spacing = 100
         _draw_grid(
             draw,
             total_w,
             total_h,
             grid_spacing,
             color=(255, 255, 255),
-            line_width=1,
+            line_width=2,
         )
+        draw.rectangle([0, 0, total_w - 1, total_h - 1], outline=(255, 255, 255), width=2)
         _draw_circle_x(
             draw,
             total_w,
@@ -163,7 +168,7 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
             y += h
     else:
         dual_colors = _parse_dual_colors(screen.base_color_name)
-        base_rgb = PALETTE.get(screen.base_color_name, PALETTE["Blue"])
+        base_rgb = _resolve_color(screen.base_color_name)
 
         # Draw tiles + per-tile text
         tile_index = 1
@@ -284,6 +289,26 @@ def _parse_dual_colors(name: str) -> tuple[tuple[int, int, int], tuple[int, int,
     if parts[0] not in PALETTE or parts[1] not in PALETTE:
         return None
     return (PALETTE[parts[0]], PALETTE[parts[1]])
+
+def _parse_hex_color(value: str) -> tuple[int, int, int] | None:
+    raw = value.strip()
+    if raw.startswith("#"):
+        raw = raw[1:]
+    if len(raw) != 6:
+        return None
+    try:
+        r = int(raw[0:2], 16)
+        g = int(raw[2:4], 16)
+        b = int(raw[4:6], 16)
+    except ValueError:
+        return None
+    return (r, g, b)
+
+def _resolve_color(name: str) -> Tuple[int, int, int]:
+    hex_rgb = _parse_hex_color(name)
+    if hex_rgb:
+        return hex_rgb
+    return PALETTE.get(name, PALETTE["Blue"])
 
 def _draw_centered_split_lines(
     draw: ImageDraw.ImageDraw,

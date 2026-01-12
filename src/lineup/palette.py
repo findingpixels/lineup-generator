@@ -5,9 +5,9 @@ from dataclasses import dataclass
 PaletteRGB = tuple[int, int, int]
 
 PALETTE: dict[str, PaletteRGB] = {
-    "Red": (255, 40, 40),
-    "Green": (40, 200, 40),
-    "Blue": (40, 80, 255),
+    "Red": (255, 0, 0),
+    "Green": (0, 255, 0),
+    "Blue": (0, 0, 255),
     "Cyan": (0, 200, 200),
     "Magenta": (200, 0, 200),
     "Yellow": (220, 200, 40),
@@ -47,7 +47,7 @@ PALETTE: dict[str, PaletteRGB] = {
     "Charcoal": (50, 55, 70),
 }
 
-def darken(rgb: PaletteRGB, factor: float = 0.75) -> PaletteRGB:
+def darken(rgb: PaletteRGB, factor: float = 0.66) -> PaletteRGB:
     """Return a darker shade of `rgb` by multiplying channels by `factor`."""
     r, g, b = rgb
     return (max(0, min(255, int(r * factor))),
