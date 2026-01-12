@@ -10,6 +10,14 @@ There are two versions in `dist/`:
 
 When you run the app, it opens a terminal window and launches the UI in your browser. Keep the terminal open while you use the app. When you are finished, close the terminal window to stop the app.
 
+## macOS install (DMG)
+
+1) Download the DMG from GitHub by opening the file and clicking the "Download raw" button. - /dist/LineupGenerator.dmg
+2) Open the DMG and drag `LineupGenerator.app` into your Applications folder.
+3) Open the app from Applications.
+4) If macOS blocks it, go to `System Settings` -> `Privacy & Security`, scroll to the Security section, and click "Open Anyway" for LineupGenerator. Confirm the prompt.
+5) After you do this once, macOS should open the app normally going forward.
+
 ## How to use the app
 
 1) Launch the app (Windows EXE or macOS app bundle).
