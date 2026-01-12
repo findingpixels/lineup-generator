@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import string
 from html import unescape
 from io import StringIO
 from urllib.parse import quote, urlparse
@@ -95,10 +96,48 @@ def _clean(value: str | None) -> str | None:
     return value if value != "" else None
 
 
+def _normalize_hex(value: str | None) -> str | None:
+    if value is None:
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    if raw.startswith("#"):
+        raw = raw[1:]
+    if len(raw) != 6 or any(ch not in string.hexdigits for ch in raw):
+        return None
+    return f"#{raw.upper()}"
+
+
 def _get_cell(row: list[str], idx: int) -> str | None:
     if idx >= len(row):
         return None
     return _clean(row[idx])
+
+
+def load_lineup_colors_from_csv(text: str) -> dict[str, str]:
+    reader = csv.reader(StringIO(text))
+    colors: dict[str, str] = {}
+    for row_num, row in enumerate(reader, start=1):
+        name = _get_cell(row, 0)
+        value = _get_cell(row, 1)
+        if not name or not value:
+            continue
+        if row_num == 1 and name.lower() == "name":
+            continue
+        if "/" in value:
+            parts = [part.strip() for part in value.split("/")]
+            if len(parts) != 2:
+                continue
+            left = _normalize_hex(parts[0])
+            right = _normalize_hex(parts[1])
+            if left and right:
+                colors[name] = f"{left},{right}"
+            continue
+        single = _normalize_hex(value)
+        if single:
+            colors[name] = single
+    return colors
 
 
 def _parse_int(value: str, label: str, row_num: int) -> int:
@@ -134,7 +173,10 @@ def _is_number(value: str | None) -> bool:
     return True
 
 
-def load_screens_from_google_csv(text: str) -> tuple[dict[str, TileType], list[ScreenSpec]]:
+def load_screens_from_google_csv(
+    text: str,
+    lineup_colors: dict[str, str] | None = None,
+) -> tuple[dict[str, TileType], list[ScreenSpec]]:
     reader = csv.reader(StringIO(text))
     tiles: dict[str, TileType] = {}
     screens: list[ScreenSpec] = []
@@ -161,6 +203,8 @@ def load_screens_from_google_csv(text: str) -> tuple[dict[str, TileType], list[S
         screen_name = _get_cell(row, COL_SCREEN_NAME) or "SCREEN"
         tile_label = tile_label_raw or screen_name
         base_color_name = _get_cell(row, COL_BASE_COLOR) or "Blue"
+        if lineup_colors and base_color_name in lineup_colors:
+            base_color_name = lineup_colors[base_color_name]
 
         secondary_tile_type_id = None
         secondary_rows = 0

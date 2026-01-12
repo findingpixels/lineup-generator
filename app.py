@@ -9,6 +9,7 @@ from PIL import Image
 from src.lineup.io_google import (
     fetch_google_sheet_csv,
     fetch_google_sheet_names,
+    load_lineup_colors_from_csv,
     load_screens_from_google_csv,
 )
 from src.lineup.renderer import RenderOptions, render_lineup_png
@@ -33,6 +34,7 @@ def _normalize_hex_color(value: str) -> str | None:
     if len(raw) != 6 or any(ch not in string.hexdigits for ch in raw):
         return None
     return f"#{raw.upper()}"
+
 st.markdown(
     """
     <style>
@@ -49,6 +51,7 @@ data_source = st.radio("Data source", ["Google Sheets", "Upload CSV", "Manual En
 
 tiles = None
 screens = None
+lineup_colors: dict[str, str] = {}
 
 if data_source == "Upload CSV":
     sheet_file = st.file_uploader("Screen notes CSV", type=["csv"], key="screen_notes")
@@ -59,7 +62,7 @@ if data_source == "Upload CSV":
 
     sheet_text = sheet_file.getvalue().decode("utf-8")
     try:
-        tiles, screens = load_screens_from_google_csv(sheet_text)
+        tiles, screens = load_screens_from_google_csv(sheet_text, lineup_colors=lineup_colors)
     except ValueError as exc:
         st.error(str(exc))
         st.stop()
@@ -76,6 +79,11 @@ elif data_source == "Google Sheets":
     def _get_sheet_names(url: str) -> list[str]:
         return fetch_google_sheet_names(url)
 
+    @st.cache_data(show_spinner=False)
+    def _get_lineup_colors(url: str) -> dict[str, str]:
+        colors_text = fetch_google_sheet_csv(url, sheet_name="LineupColors")
+        return load_lineup_colors_from_csv(colors_text)
+
     if refresh_clicked:
         st.cache_data.clear()
         st.rerun()
@@ -90,8 +98,12 @@ elif data_source == "Google Sheets":
     ).strip() or None
 
     try:
+        try:
+            lineup_colors = _get_lineup_colors(sheet_url)
+        except Exception:
+            lineup_colors = {}
         sheet_text = fetch_google_sheet_csv(sheet_url, sheet_name=sheet_name)
-        tiles, screens = load_screens_from_google_csv(sheet_text)
+        tiles, screens = load_screens_from_google_csv(sheet_text, lineup_colors=lineup_colors)
     except ValueError as exc:
         st.error(str(exc))
         st.stop()
@@ -107,10 +119,10 @@ else:
     with screen_col1:
         screen_name = st.text_input("Screen name", value="SCREEN").strip() or "SCREEN"
         tile_label = st.text_input("Delivery label", value=screen_name).strip() or screen_name
-        palette_names = list(PALETTE.keys())
+        palette_names = list(lineup_colors.keys()) if lineup_colors else list(PALETTE.keys())
         color_col, hex_col = st.columns([2, 1])
         with color_col:
-            base_color_name = st.selectbox(
+            base_color_choice = st.selectbox(
                 "Lineup Color",
                 options=palette_names,
                 index=palette_names.index("Blue") if "Blue" in palette_names else 0,
@@ -118,6 +130,7 @@ else:
             )
         with hex_col:
             hex_color_input = st.text_input("Hex color", value="", placeholder="#RRGGBB").strip()
+        base_color_name = lineup_colors.get(base_color_choice, base_color_choice)
         base_color_hex = _normalize_hex_color(hex_color_input)
         if base_color_hex:
             base_color_name = base_color_hex

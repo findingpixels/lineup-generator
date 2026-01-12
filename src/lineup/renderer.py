@@ -280,16 +280,6 @@ def render_lineup_png(screen: ScreenSpec, tiles: Dict[str, TileType], opts: Rend
 
     return img
 
-def _parse_dual_colors(name: str) -> tuple[tuple[int, int, int], tuple[int, int, int]] | None:
-    if "," not in name:
-        return None
-    parts = [part.strip() for part in name.split(",")]
-    if len(parts) != 2:
-        return None
-    if parts[0] not in PALETTE or parts[1] not in PALETTE:
-        return None
-    return (PALETTE[parts[0]], PALETTE[parts[1]])
-
 def _parse_hex_color(value: str) -> tuple[int, int, int] | None:
     raw = value.strip()
     if raw.startswith("#"):
@@ -304,11 +294,29 @@ def _parse_hex_color(value: str) -> tuple[int, int, int] | None:
         return None
     return (r, g, b)
 
-def _resolve_color(name: str) -> Tuple[int, int, int]:
+def _resolve_color_optional(name: str) -> Tuple[int, int, int] | None:
     hex_rgb = _parse_hex_color(name)
     if hex_rgb:
         return hex_rgb
-    return PALETTE.get(name, PALETTE["Blue"])
+    if name in PALETTE:
+        return PALETTE[name]
+    return None
+
+def _resolve_color(name: str) -> Tuple[int, int, int]:
+    resolved = _resolve_color_optional(name)
+    return resolved if resolved is not None else PALETTE["Blue"]
+
+def _parse_dual_colors(name: str) -> tuple[tuple[int, int, int], tuple[int, int, int]] | None:
+    if "," not in name:
+        return None
+    parts = [part.strip() for part in name.split(",")]
+    if len(parts) != 2:
+        return None
+    first = _resolve_color_optional(parts[0])
+    second = _resolve_color_optional(parts[1])
+    if first is None or second is None:
+        return None
+    return (first, second)
 
 def _draw_centered_split_lines(
     draw: ImageDraw.ImageDraw,

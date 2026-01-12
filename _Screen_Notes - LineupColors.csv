@@ -1,0 +1,61 @@
+Name,Hex
+Red,#FF0000
+Green,#00FF00
+Blue,#0000FF
+Cyan,#00C8C8
+Magenta,#C800C8
+Yellow,#DCC828
+Orange,#FF8C00
+Teal,#009696
+Gray,#969696
+Purple,#783CC8
+Pink,#FF69B4
+Lime,#8CDC3C
+Navy,#142878
+Sky,#5AAAFF
+Olive,#788228
+Maroon,#8C1414
+Brown,#8C5A32
+Gold,#DCAA14
+Indigo,#4B0082
+Slate,#6E788C
+Turquoise,#00B4AA
+Mint,#3CC878
+Seafoam,#46A082
+Forest,#146E28
+Emerald,#009650
+Chartreuse,#96C800
+Amber,#E69614
+Coral,#EB6450
+Salmon,#D25A46
+Peach,#DC825A
+Sand,#BEA05A
+Khaki,#968C50
+Tan,#AA7846
+Bronze,#8C5F2D
+Crimson,#B41E2D
+Violet,#8C46D2
+Lavender,#966ED2
+Plum,#5A2878
+Steel,#506E8C
+Charcoal,#323746
+"Red, Green",#FF0000 / #00FF00
+"Green, Red",#00FF00 / #FF0000
+"Blue, Yellow",#0000FF / #DCC828
+"Cyan, Orange",#00C8C8 / #FF8C00
+"Magenta, Green",#C800C8 / #00FF00
+"Yellow, Blue",#DCC828 / #0000FF
+"Orange, Cyan",#FF8C00 / #00C8C8
+"Teal, Coral",#009696 / #EB6450
+"Gray, Pink",#969696 / #FF69B4
+"Purple, Lime",#783CC8 / #8CDC3C
+"Pink, Forest",#FF69B4 / #146E28
+"Lime, Purple",#8CDC3C / #783CC8
+"Navy, Gold",#142878 / #DCAA14
+"Sky, Maroon",#5AAAFF / #8C1414
+"Olive, Magenta",#788228 / #C800C8
+"Maroon, Mint",#8C1414 / #3CC878
+"Brown, Sky",#8C5A32 / #5AAAFF
+"Gold, Navy",#DCAA14 / #142878
+"Indigo, Sand",#4B0082 / #BEA05A
+"Slate, Peach",#6E788C / #DC825A
