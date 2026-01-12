@@ -1,4 +1,5 @@
 import io
+import os
 import sys
 import string
 from pathlib import Path
@@ -18,7 +19,12 @@ from src.lineup.palette import PALETTE
 
 st.set_page_config(page_title="Lineup Guide Generator", layout="wide")
 
-st.title("Lineup Guide Generator")
+title_col, quit_col = st.columns([6, 1])
+with title_col:
+    st.title("Lineup Guide Generator")
+with quit_col:
+    if st.button("Quit App"):
+        os._exit(0)
 
 st.markdown(
     "Load a **screen notes CSV**, connect a Google Sheet, or enter details manually. "

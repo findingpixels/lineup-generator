@@ -1,0 +1,4 @@
+([('LineupGenerator',
+   '/Users/petershay/Desktop/temp coding '
+   'projects/lineup-generator/dist/LineupGenerator',
+   'EXECUTABLE')],)

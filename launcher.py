@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import traceback
@@ -21,6 +22,21 @@ def _write_log(text: str) -> None:
         if not text.endswith("\n"):
             handle.write("\n")
 
+def _run_streamlit() -> None:
+    try:
+        stcli.main()
+    except SystemExit as exc:
+        if exc.code:
+            msg = f"Streamlit exited with code {exc.code}. Log: {LOG_PATH}"
+            print(msg)
+            _write_log(msg)
+            input("Press Enter to close...")
+    except Exception:
+        tb = traceback.format_exc()
+        print("Streamlit failed to start. See log:", LOG_PATH)
+        _write_log(tb)
+        input("Press Enter to close...")
+
 
 def main() -> None:
     os.environ.setdefault("STREAMLIT_SERVER_PORT", str(STREAMLIT_PORT))
@@ -41,19 +57,7 @@ def main() -> None:
         "--global.developmentMode",
         "false",
     ]
-    try:
-        stcli.main()
-    except SystemExit as exc:
-        if exc.code:
-            msg = f"Streamlit exited with code {exc.code}. Log: {LOG_PATH}"
-            print(msg)
-            _write_log(msg)
-            input("Press Enter to close...")
-    except Exception:
-        tb = traceback.format_exc()
-        print("Streamlit failed to start. See log:", LOG_PATH)
-        _write_log(tb)
-        input("Press Enter to close...")
+    _run_streamlit()
 
 
 if __name__ == "__main__":
